@@ -1,5 +1,53 @@
 # Results
 
+## Run 3 — quality-routing FIRES (real models, free), 2026-07
+
+Runs 1-2 showed the cost win but never the quality win (frontier models passed
+everything). Run 3 adds a deliberately weak-but-cheapest agent, **nano** (haiku with a
+fast/terse persona + a minimal no-edge-case spec), to the pool. nano is real and mostly
+competent — but its `merge` returns tuples instead of lists, so it fails the `intervals`
+competency while passing `parsing`. Screening and held-out job use *different test
+instances* of each competency; all code graded in the subprocess sandbox
+(`experiments/subagent_run_quality_routing.py`).
+
+**Correctness (screening / held-out job):**
+
+| competency | opus | haiku | nano |
+|---|---|---|---|
+| intervals | 1.00 / 1.00 | 1.00 / 1.00 | **0.00 / 0.00** |
+| parsing | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+
+Intervals screening **discrimination = 1.00** (the audit separates them). The audit
+hires a **mixed team**: `intervals -> haiku` (nano fails), `parsing -> nano` (cheapest,
+all pass).
+
+**Held-out job — quality and cost:**
+
+| strategy | quality | cost $ | |
+|---|---|---|---|
+| **audit_hire** | **1.00** | **0.12** | mixed team (haiku + nano) |
+| always_haiku | 1.00 | 0.21 | same quality, higher cost |
+| always_opus | 1.00 | 1.08 | naive "always biggest" |
+| always_nano | **0.50** | 0.04 | naive "always cheapest" — fails intervals |
+
+**This is the full thesis, demonstrated on real models:**
+- ✅ **Beats "always cheapest" on QUALITY** — 1.00 vs 0.50. The audit caught that nano is
+  broken on `intervals` and routed around it; the naive cheap policy ships the bug.
+- ✅ **Beats "always biggest" on COST** — 9× cheaper, same quality.
+- ✅ **Beats "always haiku" on cost** at equal quality, by using cheap nano for the one
+  competency where it's sufficient (mixed team).
+
+audit_hire is the **only** strategy that achieves perfect quality at the lowest cost.
+The quality-routing claim — untriggered in runs 1-2 — now holds: a per-requirement audit
+lets you safely exploit a cheap agent *where it works* and route around it *where it
+doesn't*, which neither "always cheapest" nor "always biggest" can do.
+
+*Caveat: nano is a constructed weak agent (a real model given a terse persona), and its
+failure is a type bug rather than a deep capability gap; the mechanism is what's shown.
+The faithful paid run would use genuinely distinct model tiers.*
+
+---
+
 ## Run 2 — agentic/executable, real-model (free via subagents), 2026-07
 
 Validated the **agentic** path for free (session models, no API spend), per the

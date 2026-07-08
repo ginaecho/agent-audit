@@ -60,40 +60,49 @@ Author, grader, and candidates are three separate parties (self-preference bias)
 
 ## 3. Experiments & results
 
-Two free validation runs using session models (opus/sonnet/haiku), graded offline by the
-real code — deliberately *before* any paid API run.
+Three free validation runs using session models, graded offline by the real code —
+deliberately *before* any paid API run.
 
 - **Run 1 (text, claim verification).** All three models correct → correctness ties
   (discrimination 0.00). Efficiency scoring recovers the signal (0.81) and hires haiku.
-- **Run 2 (executable code, held-out `insert`/`evaluate`).** All three correct on every
-  hidden test. **audit-hire matched the best model's quality at ~1/5 the cost of
-  always-opus** by certifying haiku suffices.
+- **Run 2 (executable code).** All three correct on every hidden test. **audit-hire
+  matched the best model's quality at ~1/5 the cost of always-opus** by certifying haiku
+  suffices.
+- **Run 3 (executable code, weak cheap agent added).** A deliberately weak-but-cheapest
+  agent `nano` is broken on `intervals` (its `merge` returns tuples), fine on `parsing`.
+  The audit hires a **mixed team** (haiku for intervals, nano for parsing):
 
-| (Run 2) strategy | quality | cost $ |
+| (Run 3) strategy | quality | cost $ |
 |---|---|---|
-| audit_hire | 1.00 | 0.21 |
+| **audit_hire** | **1.00** | **0.12** |
 | always_haiku | 1.00 | 0.21 |
-| always_sonnet | 1.00 | 0.81 |
 | always_opus | 1.00 | 1.08 |
+| always_nano (cheapest) | 0.50 | 0.04 |
 
-Details + tables: `RESULTS.md`.
+audit-hire is the only strategy at perfect quality *and* lowest cost: it **beats
+always-cheapest on quality** (1.00 vs 0.50 — the quality-routing win) and **always-
+biggest on cost** (9×). Details + tables: `RESULTS.md`.
 
 ## 4. Findings
 
-- **The cost win is real and reproduced.** A requirement-specific audit lets you hire the
-  cheapest *sufficient* candidate and match top-tier quality far cheaper — the FrugalGPT
-  result, but per-task-audit-driven and extended to executable/agentic tasks.
+- **The cost win is real and reproduced** (runs 1-2). A requirement-specific audit lets
+  you hire the cheapest *sufficient* candidate and match top-tier quality far cheaper —
+  the FrugalGPT result, but per-task-audit-driven and extended to executable/agentic tasks.
+- **The quality win fires when the pool is heterogeneous** (run 3). With a cheap-but-weak
+  agent present, audit-hire forms a mixed team — exploiting the cheap agent where it works,
+  routing around it where it fails — and is the only strategy that reaches perfect quality
+  at the lowest cost, beating always-cheapest on quality and always-biggest on cost.
 - **Correctness-only scoring is a trap.** On common tasks, frontier models tie; the
   hiring signal lives in *capability-per-cost*, not pass/fail.
-- **The audit is a certificate, not a gamble.** audit-hire ties always-cheapest when the
-  cheap model happens to suffice — but it *knows* it suffices (screened), whereas
-  always-cheapest fails silently the first time it doesn't.
+- **The audit is a certificate, not a gamble.** Always-cheapest fails silently the first
+  time the cheap agent can't do the job; audit-hire has screened it and knows.
 
 ## 5. Limitations / threats to validity
 
-- **Quality-routing unproven.** Our tasks don't make frontier models fail, so the
-  reroute-on-failure case never fired. Needs discriminating tasks or a genuinely weak
-  candidate.
+- **Quality-routing shown with a constructed weak agent.** Run 3's `nano` is a real model
+  given a terse persona; its failure is a type bug, not a deep capability gap. The
+  *mechanism* is demonstrated, but a stronger result would use genuinely distinct tiers or
+  naturally-occurring capability gaps rather than an induced one.
 - **Free runs are directional.** Session models ≈ opus-4-8/sonnet-5/haiku-4-5, not the
   full 4-model policy; single-shot, not multi-step agent loops; token counts include
   subagent overhead; subagent latency is noisy (excluded from headline).
@@ -104,9 +113,8 @@ Details + tables: `RESULTS.md`.
 
 ## 6. Next experiments
 
-1. **Trigger quality-routing.** Add a genuinely weak candidate and/or adversarial tasks
-   until a competency separates on *correctness*; show audit-hire beats always-cheapest on
-   quality and always-opus on cost — the headline result.
+1. ✅ **Trigger quality-routing** — done (run 3), with an induced weak agent. Next:
+   reproduce it with *naturally* distinct tiers / genuine capability gaps, not a persona.
 2. **Multi-step agentic loops on real models** (write→run→fix), so path-length and speed
    discriminate, not just token price.
 3. **Paid, controlled run** of the faithful 4-model policy with separated
