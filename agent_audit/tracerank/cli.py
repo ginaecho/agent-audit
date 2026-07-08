@@ -1,8 +1,10 @@
 """CLI: rank agents from real usage traces, and emit per-agent improvement skills.
 
-    python -m agent_audit.tracerank --demo            # bundled sample traces
-    python -m agent_audit.tracerank                   # your real VS Code Copilot chats
-    python -m agent_audit.tracerank --list-roots      # show where it will look
+    python -m agent_audit.tracerank --demo                        # bundled Copilot sample
+    python -m agent_audit.tracerank                                # your real VS Code Copilot chats
+    python -m agent_audit.tracerank --source claude-code            # your real Claude Code sessions
+    python -m agent_audit.tracerank --source claude-code --demo    # bundled Claude Code sample
+    python -m agent_audit.tracerank --list-roots                   # show where it will look
     python -m agent_audit.tracerank --root /path/to/User
 
 Runs entirely locally; trace contents never leave your machine.
@@ -14,17 +16,28 @@ import argparse
 import json
 from pathlib import Path
 
+from .adapters import claude_code as cc
 from .adapters import copilot_vscode as cop
 from .hints import hints_for_agent
 from .leaderboard import build_leaderboard
 from .signals import score_session
 
-_DEMO_DIR = Path(__file__).parent / "demo_traces"
+_DEMO_DIRS = {
+    "copilot-vscode": Path(__file__).parent / "demo_traces",
+    "claude-code": Path(__file__).parent / "demo_traces_claude_code",
+}
 
 
 def _load(args) -> list:
+    if args.source == "claude-code":
+        if args.demo:
+            files = sorted(_DEMO_DIRS["claude-code"].rglob("subagents/*.jsonl"))
+            return cc.load_sessions(files=files)
+        roots = [Path(r) for r in args.root] if args.root else None
+        return cc.load_sessions(roots, include_main_sessions=args.include_main_sessions)
     if args.demo:
-        files = sorted(_DEMO_DIR.glob("*.json")) + sorted(_DEMO_DIR.glob("*.jsonl"))
+        d = _DEMO_DIRS["copilot-vscode"]
+        files = sorted(d.glob("*.json")) + sorted(d.glob("*.jsonl"))
         return cop.load_sessions(files=files)
     roots = [Path(r) for r in args.root] if args.root else None
     return cop.load_sessions(roots)
@@ -32,9 +45,13 @@ def _load(args) -> list:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Rank AI coding agents from usage traces.")
-    ap.add_argument("--source", default="copilot-vscode", choices=["copilot-vscode"])
-    ap.add_argument("--root", action="append", help="VS Code User dir (repeatable)")
+    ap.add_argument("--source", default="copilot-vscode", choices=["copilot-vscode", "claude-code"])
+    ap.add_argument("--root", action="append", help="storage root to search (repeatable)")
     ap.add_argument("--demo", action="store_true", help="use bundled sample traces")
+    ap.add_argument("--include-main-sessions", action="store_true",
+                    help="claude-code only: also include whole top-level session "
+                         "transcripts (coarser: one multi-task, possibly multi-model, "
+                         "conversation counted as a single session)")
     ap.add_argument("--list-roots", action="store_true",
                     help="print discovered storage roots and exit")
     ap.add_argument("--min-hint-count", type=int, default=2)
@@ -42,16 +59,24 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.list_roots:
-        roots = cop.default_storage_roots()
-        print("Discovered VS Code roots:" if roots else "No VS Code roots found.")
-        for r in roots:
-            n = len(cop.iter_session_files([r]))
-            print(f"  {r}   ({n} chat-session files)")
+        if args.source == "claude-code":
+            roots = cc.default_project_roots()
+            print("Discovered Claude Code roots:" if roots else "No Claude Code roots found.")
+            for r in roots:
+                n = len(cc.iter_subagent_files([r]))
+                m = len(cc.iter_main_session_files([r]))
+                print(f"  {r}   ({n} subagent session files, {m} main session files)")
+        else:
+            roots = cop.default_storage_roots()
+            print("Discovered VS Code roots:" if roots else "No VS Code roots found.")
+            for r in roots:
+                n = len(cop.iter_session_files([r]))
+                print(f"  {r}   ({n} chat-session files)")
         return 0
 
     sessions = _load(args)
     if not sessions:
-        print("No sessions found. Try --demo, or pass --root <VS Code User dir>. "
+        print("No sessions found. Try --demo, or pass --root <storage dir>. "
               "Run --list-roots to see where it looks.")
         return 1
 

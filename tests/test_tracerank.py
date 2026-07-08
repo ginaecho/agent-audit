@@ -8,8 +8,11 @@ from agent_audit.tracerank import (
     Session, Turn, Role, score_session, build_leaderboard, hints_for_agent,
 )
 from agent_audit.tracerank.adapters import copilot_vscode as cop
+from agent_audit.tracerank.adapters import claude_code as cc
 
 _DEMO = Path(__file__).resolve().parents[1] / "agent_audit" / "tracerank" / "demo_traces"
+_CC_DEMO = (Path(__file__).resolve().parents[1] / "agent_audit" / "tracerank"
+           / "demo_traces_claude_code" / "subagents")
 
 
 def _s(sid, agent, turns, task_kind="", ended=True):
@@ -122,6 +125,50 @@ def test_end_to_end_demo_ranks_and_hints():
     assert order.index("gpt-4o") < order.index("gpt-4o-mini")
     hints = hints_for_agent(scores, "gpt-4o-mini")
     assert any(h.tag == "verifiable_failure_in_trace" for h in hints)
+
+
+def test_claude_code_adapter_parses_clean_pass():
+    s = cc.parse_subagent_file(_CC_DEMO / "agent-clean-pass.jsonl")
+    assert s is not None and s.agent == "claude-opus-4-8" and s.source == "claude-code"
+    assert s.task_kind == "debug scheduler"           # leading "opus" stripped from description
+    assert s.ended_naturally is True
+    sc = score_session(s)
+    assert sc.outcome > 0.8                           # tool_result "all tests passed" is now
+                                                       # surfaced as a hard-pass TOOL turn
+
+
+def test_claude_code_adapter_surfaces_successful_tool_results():
+    # Regression: earlier the adapter only emitted a Turn for is_error=True tool
+    # results, silently dropping successful ones -- discarding exactly the "hard
+    # pass" evidence (e.g. "all tests passed") the scorer looks for.
+    s = cc.parse_subagent_file(_CC_DEMO / "agent-clean-pass.jsonl")
+    tool_turns = [t for t in s.turns if t.role is Role.TOOL]
+    assert len(tool_turns) == 1 and tool_turns[0].tool_ok is True
+    assert "all tests passed" in tool_turns[0].text
+
+
+def test_claude_code_adapter_detects_failure_and_stop_hook_block():
+    s = cc.parse_subagent_file(_CC_DEMO / "agent-tool-fail.jsonl")
+    assert s.agent == "claude-haiku-4-5-20251001"
+    sc = score_session(s)
+    assert "verifiable_failure_in_trace" in sc.failure_tags
+    assert sc.outcome < 0.3
+    # the stop_hook_summary record (preventedContinuation=true) becomes a second,
+    # distinct hard-negative TOOL turn -- a Claude-Code-specific signal grounded in
+    # a real field (a Stop hook judged the "done" claim premature).
+    tool_texts = " ".join(t.text for t in s.turns if t.role is Role.TOOL)
+    assert "stop_hook_blocked" in tool_texts
+
+
+def test_claude_code_demo_ranks_clean_above_failing():
+    files = sorted(_CC_DEMO.glob("*.jsonl"))
+    sessions = cc.load_sessions(files=files)
+    assert len(sessions) == 3
+    scores = [score_session(s) for s in sessions]
+    lb = build_leaderboard(scores)
+    order = {r.agent: r.adjusted_success for r in lb.rankings}
+    assert order["claude-opus-4-8"] > order["claude-haiku-4-5-20251001"]
+    assert order["claude-sonnet-5"] > order["claude-haiku-4-5-20251001"]
 
 
 def test_hints_fire_on_repeated_failures():

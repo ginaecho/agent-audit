@@ -10,10 +10,12 @@ task success, difficulty-adjusted, then emit per-agent improvement *skills*.
 ## Use it
 
 ```bash
-python -m agent_audit.tracerank --demo          # bundled sample traces
-python -m agent_audit.tracerank --list-roots    # show where it will look on your machine
-python -m agent_audit.tracerank                  # your real VS Code / Copilot chats
-python -m agent_audit.tracerank --json           # machine-readable output
+python -m agent_audit.tracerank --demo                       # bundled Copilot sample
+python -m agent_audit.tracerank --list-roots                 # show where it will look
+python -m agent_audit.tracerank                               # your real VS Code / Copilot chats
+python -m agent_audit.tracerank --source claude-code           # your real Claude Code sessions
+python -m agent_audit.tracerank --source claude-code --demo   # bundled Claude Code sample
+python -m agent_audit.tracerank --json                        # machine-readable output
 ```
 
 Runs entirely locally; trace contents never leave your machine.
@@ -76,5 +78,59 @@ Insiders). Per-turn status = `modelState` (0 Pending, 1 Complete, 2 Cancelled,
 schema bump usually means editing one small candidate list in `copilot_vscode.py`.
 
 *The format shifts across releases — run `--list-roots` and eyeball a parsed session
-before trusting a run. Adding a new source (Claude Code sessions, Copilot CLI) is one
-new adapter that emits `Session[]`; everything downstream is shared.*
+before trusting a run. Adding a new source (Copilot CLI, other IDEs) is one new
+adapter that emits `Session[]`; everything downstream is shared.*
+
+## Claude Code adapter — the on-disk format
+
+Schema verified directly against real transcripts in this environment
+(`~/.claude/projects/**`), not guessed. Two file shapes, one schema:
+
+- **Main transcript** `<projects_root>/<slug>/<sessionId>.jsonl` — the whole
+  interactive session as one JSON-Lines stream.
+- **Subagent transcript** `<projects_root>/<slug>/<sessionId>/subagents/
+  agent-<id>.jsonl` (+ sidecar `agent-<id>.meta.json` with `description`/
+  `agentType`) — one bounded, single-purpose task per file. This is the primary
+  ranking unit (`parse_subagent_file`) — same granularity as a Copilot chat
+  session. `--include-main-sessions` also loads the coarser whole-conversation
+  unit as a fallback.
+
+Confirmed fields: `{"type":"user","message":{"content": str | [block,...]}}`
+(a block is `text` prose or `tool_result` with `is_error`); `{"type":"assistant",
+"message":{"content":[...], "model", "usage":{"input_tokens","output_tokens",
+"cache_creation_input_tokens","cache_read_input_tokens"}, "stop_reason"}}`.
+Token counts use the real `usage` numbers (matching how `providers.py` prices
+Anthropic usage), not a char/4 estimate. A genuinely Claude-Code-specific hard
+signal: `{"type":"system","subtype":"stop_hook_summary","preventedContinuation":
+bool,"hookErrors":[...]}` — a Stop hook can block the agent from ending the turn,
+meaning it declared "done" prematurely; folded in as a synthetic failed-tool turn.
+
+**A real bug the fixtures caught:** the first adapter draft only emitted a Turn
+for `is_error: true` tool results, silently discarding successful ones — which
+threw away exactly the "hard pass" evidence (e.g. "all tests passed") the scorer
+depends on. Fixed (`_records_to_turns` now surfaces every `tool_result`,
+`tool_ok = not is_error`); regression-tested (`test_claude_code_adapter_surfaces_
+successful_tool_results`).
+
+### Honest finding from validating against this environment's own traces
+
+Running the adapter against the ~100+ real subagent transcripts already on disk
+in this session surfaced a genuine limitation, not a success story to round up:
+**single-shot Q&A subagents carry no embedded outcome signal.** Several dozen of
+those sessions were "answer this reasoning problem, return one line" subagents —
+one user turn, one assistant turn, **zero tool calls** — whose correctness was
+judged *externally*, in the orchestrating conversation (comparing the final
+answer against ground truth), never written back into the subagent's own trace.
+With no test run, no vote, no follow-up correction inside the file itself, the
+signal hierarchy has nothing hard to grab and the three models land close to a
+flat baseline (~60% each) — which is *not* what a hand-graded pass, matching
+the reliability-sweep result in `RESULTS.md` (opus/sonnet ~100%, haiku ~65%),
+would show if the grading were visible in-trace.
+
+**The takeaway:** trace-based ranking is only as good as the evidence embedded
+*in the trace*. It works well for interactive, verifiable work (a coding agent
+that runs tests, a chat where the user pushes back) and says almost nothing about
+isolated single-shot generations graded elsewhere. If you want to rank agents on
+Q&A-style work, either (a) have the grading step write its verdict back into the
+same trace (a vote, a labeled tool_result), or (b) use the strong-model
+transcript-relabeler extension point noted above instead of the raw heuristics.

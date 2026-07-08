@@ -30,7 +30,10 @@ Repository = "https://github.com/ginaecho/agent-audit"
 include = ["agent_audit*"]
 
 [tool.setuptools.package-data]
-"agent_audit.tracerank" = ["demo_traces/*.json", "demo_traces/*.jsonl"]
+"agent_audit.tracerank" = [
+    "demo_traces/*.json", "demo_traces/*.jsonl",
+    "demo_traces_claude_code/subagents/*.jsonl", "demo_traces_claude_code/subagents/*.meta.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -303,6 +303,24 @@ over closed-form problems that tie; and budget the number of repeated trials aga
 the discrimination they actually buy. Cheap-to-run correctness checks are a trap —
 the signal lives in capability-per-cost and reliability, which cost more to measure.
 
+## An alternative to authoring tests: rank agents from real usage
+
+If auto-generating tests is this expensive and hits a ceiling (a model can't author
+items past its own blind spots — see `docs/FINDINGS_AND_OPEN_PROBLEMS.md`), the other
+road is to **stop authoring tests and harvest ground truth that already exists**: the
+outcomes of real agent sessions. [`agent_audit/tracerank`](agent_audit/tracerank) parses
+VS Code/Copilot chats and Claude Code sessions into a difficulty-adjusted capability
+leaderboard, weighted toward hard evidence (tests passed/failed, builds, votes) over
+soft sentiment, and turns each agent's recurring failures into concrete improvement
+skills. See [`docs/TRACERANK.md`](docs/TRACERANK.md) — including an honest finding from
+validating it against this project's own traces: it only works when the trace *itself*
+contains outcome evidence; single-shot Q&A graded elsewhere leaves nothing to find.
+
+```bash
+python -m agent_audit.tracerank --demo
+python -m agent_audit.tracerank --source claude-code --demo
+```
+
 ## Status
 
 Early prototype (v0.1). The engine, coaching loop, and evaluation harness are real

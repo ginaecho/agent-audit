@@ -1,0 +1,4 @@
+{"type":"user","message":{"content":"add input validation to the config loader"}}
+{"type":"assistant","message":{"model":"claude-sonnet-5","content":[{"type":"text","text":"Added a pydantic schema and a clear error message."}],"usage":{"input_tokens":1100,"output_tokens":160,"cache_creation_input_tokens":0,"cache_read_input_tokens":800},"stop_reason":"tool_use"}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":false,"content":"all tests passed, exit code 0"}]}}
+{"type":"assistant","message":{"model":"claude-sonnet-5","content":[{"type":"text","text":"Tests pass. Done."}],"usage":{"input_tokens":250,"output_tokens":35,"cache_creation_input_tokens":0,"cache_read_input_tokens":1300},"stop_reason":"end_turn"}}
