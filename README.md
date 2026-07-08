@@ -242,6 +242,48 @@ pytest
 The suite runs the whole pipeline offline (deterministic mock providers) and unit-
 tests every grader check.
 
+## Conclusion — a discriminating audit is expensive and low-yield to build
+
+The experiments carry a sobering cost lesson: **generating a batch of *correct,
+discriminating* tests is neither easy nor cheap.** Frontier tiers are saturated on
+clean, single-answer tasks, so most well-formed tests come back a **tie** and carry
+zero hiring signal. Finding one honest quality gap took a long search:
+
+- **~24 candidate interviews this session** (opus/sonnet/haiku across 5 test
+  designs), on top of ~8 prior hard coding problems that all tied.
+- **Yield: ~1 discriminating design out of ~3 tried** — and the one that worked
+  (`experiments/results/reliability_sweep.md`) only revealed the gap by running each
+  item **4× per model** to measure reliability, not correctness.
+- Every test also needs **objective ground truth** (here, brute-force reference
+  solutions and hidden-test suites), which the strategist must author and verify —
+  the real bottleneck, and itself Opus-priced work.
+
+**Cost of the candidate runs** (these were *free* via session models; priced as if
+billed by API — `python experiments/cost_estimate.py`):
+
+| model | tokens | cost (output-rate upper bound) |
+|---|---|---|
+| opus | 174,193 | $4.35 |
+| sonnet | 217,556 | $3.26 |
+| haiku | 165,381 | $0.83 |
+| **total** | **557,130** | **~$8.45** (realistically ~$3–5, much is cached context) |
+
+That ~$8 buys *only the candidate interviews* for one session — it excludes the
+strategist's design/grading/iteration (Opus 4.8, the dominant cost) and the prior
+tied rounds that produced no signal. Scaled to the full 4-model policy with
+paid API calls and repeated sampling, a single discriminating audit is a
+**multi-dollar-to-tens-of-dollars** exercise, most of it spent on tests that don't
+separate anyone.
+
+**Implication for the design:** an audit is a *certificate you pay for*, so spend
+must be justified by decisions it changes. Practical levers: reuse/cache
+discriminating items across requirements; screen cheap models first and only
+escalate sampling where scores are close; prefer **stochastic, simulator-graded
+tasks** (§`docs/FINDINGS_AND_OPEN_PROBLEMS.md`) that discriminate on the first run
+over closed-form problems that tie; and budget the number of repeated trials against
+the discrimination they actually buy. Cheap-to-run correctness checks are a trap —
+the signal lives in capability-per-cost and reliability, which cost more to measure.
+
 ## Status
 
 Early prototype (v0.1). The engine, coaching loop, and evaluation harness are real
