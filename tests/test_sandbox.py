@@ -26,10 +26,25 @@ def test_infinite_loop_is_killed_by_timeout():
     assert latency < 3.0  # killed near the 1s deadline, not hung forever
 
 
-def test_imports_are_blocked():
+def test_dangerous_imports_are_blocked():
     frac, detail, _ = run_code_sandboxed(
         "import os\ndef add(a, b):\n    return os.getpid()", "add", TESTS)
-    assert frac == 0.0 and ("did not load" in detail or "__import__" in detail)
+    assert frac == 0.0 and "not allowed" in detail
+
+
+def test_safe_stdlib_imports_are_allowed():
+    # Correct solutions that use functools/collections/etc. must NOT be falsely failed.
+    code = "from functools import lru_cache\n@lru_cache(None)\ndef add(a, b):\n    return a + b"
+    frac, _, _ = run_code_sandboxed(code, "add", TESTS)
+    assert frac == 1.0
+
+
+def test_recursive_solutions_work():
+    # A function that references itself must not fail with NameError (single-namespace
+    # exec) — otherwise correct recursive solutions get falsely marked wrong.
+    code = "def fact(n):\n    return 1 if n <= 1 else n * fact(n - 1)"
+    frac, _, _ = run_code_sandboxed(code, "fact", [((5,), 120), ((0,), 1), ((6,), 720)])
+    assert frac == 1.0
 
 
 def test_solve_coding_task_with_sandbox_runner():

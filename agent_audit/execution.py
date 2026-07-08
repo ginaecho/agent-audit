@@ -114,13 +114,15 @@ def run_code(
     hidden_tests: list[tuple[tuple, Any]],
 ) -> tuple[float, str, float]:
     """Exec ``code``, run the hidden tests, return (pass_fraction, detail, exec_seconds)."""
-    ns: dict[str, Any] = {}
+    # Single namespace as globals so top-level functions can recurse / reference
+    # each other (separate globals/locals breaks self-recursion with a NameError).
+    g: dict[str, Any] = {"__builtins__": _SAFE_BUILTINS}
     t0 = time.perf_counter()
     try:
-        exec(code, {"__builtins__": _SAFE_BUILTINS}, ns)  # noqa: S102 (see security note)
+        exec(code, g)  # noqa: S102 (see security note)
     except Exception as exc:  # syntax/name/etc.
         return 0.0, f"code did not load: {type(exc).__name__}: {exc}", time.perf_counter() - t0
-    fn = ns.get(entrypoint)
+    fn = g.get(entrypoint)
     if not callable(fn):
         return 0.0, f"no callable named '{entrypoint}' was defined", time.perf_counter() - t0
 

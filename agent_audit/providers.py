@@ -19,13 +19,25 @@ from __future__ import annotations
 from typing import Callable, Protocol, runtime_checkable
 
 # --- Model policy -------------------------------------------------------------
-# Three separate parties, so the exam author, the grader, and the examinees never
-# coincide (self-preference bias, docs/RESEARCH.md §2):
-#   * strategist authors the audit  -> Opus 4.8 (most capable non-Fable model)
-#   * judge grades open-ended checks -> Opus 4.7 (strong, and NOT a candidate)
-#   * candidates under audit         -> the four models below (no Fable 5 anywhere)
+# Evaluation is ROUTED BY TASK TYPE:
+#   * Coding / system tasks (verifiable)  -> DETERMINISTIC NUMERIC scoring: hidden
+#     tests -> pass rate, plus cost / steps / speed. No LLM in the loop, fully
+#     reproducible. See execution.py, sandbox.py, scoring.py.
+#   * Verbal / free-text tasks (subjective) -> LLM-AS-JUDGE by the MOST CAPABLE model
+#     (Opus 4.8), scoring against the explicit rubric the strategist wrote. See
+#     grader.py (llm_judge).
+# The strategist (Opus 4.8) authors both halves: the numeric goals/tests for code and
+# the rubric for verbal. The judge is the most capable model because judging free-text
+# quality is the hardest, least-verifiable step and deserves the strongest model.
+#
+# Self-preference caveat (docs/RESEARCH.md §2): a judge can over-reward outputs that
+# resemble its own. Opus-4-8-as-judge is safe as long as Opus 4.8 is NOT in the
+# candidate pool being judged (it isn't — candidates are the cheaper models below).
+# If you must screen an Opus-family candidate on a verbal task, use a cross-family
+# judge or a multi-judge panel instead.
 STRATEGIST_MODEL = "claude-opus-4-8"
-JUDGE_MODEL = "claude-opus-4-7"
+JUDGE_MODEL = "claude-opus-4-8"   # most capable model judges verbal quality
+CODING_EVAL = "deterministic-sandbox"   # coding/system tasks are graded numerically, not judged
 CANDIDATE_MODELS = [
     "claude-opus-4-6",
     "claude-sonnet-4-6",

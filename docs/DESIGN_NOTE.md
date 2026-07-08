@@ -58,6 +58,21 @@ Gap: nobody authors a **requirement-specific** audit and turns the result into a
 
 Author, grader, and candidates are three separate parties (self-preference bias).
 
+### Evaluation is routed by task type
+
+- **Coding / system tasks (verifiable) → deterministic numeric scoring.** Hidden tests
+  → pass rate, plus cost / steps / speed. No LLM in the grading loop; fully reproducible
+  (`execution.py`, `sandbox.py`, `scoring.py`). The strategist's job here is to author
+  the *goals and numeric criteria* (the hidden tests and thresholds).
+- **Verbal / free-text tasks (subjective) → LLM-as-judge by the most capable model**
+  (Opus 4.8), against the explicit rubric the strategist wrote (`grader.py`). Judging
+  open-ended quality is the hardest, least-verifiable step, so it gets the strongest
+  model — kept out of the candidate pool (or run as a cross-family panel) to avoid
+  self-preference.
+
+The strategist authors both halves; the *grader* never guesses — it either runs code
+against numeric criteria, or scores text against a rubric.
+
 ## 3. Experiments & results
 
 Three free validation runs using session models, graded offline by the real code —

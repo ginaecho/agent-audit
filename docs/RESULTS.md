@@ -1,5 +1,36 @@
 # Results
 
+## Run 4 — honest attempt at a NATURAL quality gap (null result), 2026-07
+
+Run 3's weak agent was *induced* (a persona). Run 4 asks the harder, honest question:
+do **unmodified** opus / sonnet / haiku differ in *correctness* on genuinely hard,
+unambiguous coding tasks — no personas, same fair spec? Two LeetCode-hard problems:
+`calculate` (basic calculator with parentheses + precedence + truncating division) and
+`is_match` (regex with `.`/`*`, full-string), graded with brutal edge-case suites.
+
+**Result: no. All three pass everything** — 12/12 on `calculate`, 15/15 on `is_match`.
+Frontier models do not separate on correctness on well-known hard problems.
+
+Two **false** spreads appeared first and were **rejected as tooling artifacts**, not
+reported as findings (this is what "don't cheat" looks like in practice):
+- opus's `is_match` used `from functools import lru_cache` — the sandbox blocked *all*
+  imports, so a correct solution scored 0.00. **Fix:** allow a safe stdlib allowlist
+  (functools, collections, math, …); still block os/sys/subprocess/socket.
+- haiku's `calculate` used recursion for parentheses — the sandbox exec'd with separate
+  globals/locals, so the function couldn't see itself (`NameError`), scoring 0.58.
+  **Fix:** exec in a single namespace so recursion / cross-function references work.
+
+Both were genuine methodology bugs (now covered by tests); after fixing them the honest
+answer is a clean 3-way tie.
+
+**Conclusion:** a *natural* correctness gap needs either a genuinely weaker model than
+any available here, or novel/adversarial tasks outside these models' competence —
+neither obtainable via the free subagent path. Among opus/sonnet/haiku, the honest
+differentiator is **cost/efficiency, not quality** (runs 1-2), unless a genuinely weak
+agent is in the pool (run 3, induced). We did not manufacture a quality gap.
+
+---
+
 ## Run 3 — quality-routing FIRES (real models, free), 2026-07
 
 Runs 1-2 showed the cost win but never the quality win (frontier models passed

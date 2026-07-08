@@ -37,18 +37,34 @@ _SAFE_NAMES = [
 ]
 
 _DRIVER = r"""
-import json, sys, builtins
+import json, sys, builtins, importlib
 safe = {n: getattr(builtins, n) for n in %(names)s if hasattr(builtins, n)}
+# Allow a curated set of safe, pure-computation stdlib modules (so correct
+# solutions that use functools/collections/etc. are not falsely failed), while
+# still blocking os/sys/subprocess/socket/etc.
+_ALLOWED_MODULES = {
+    "math", "cmath", "functools", "itertools", "collections", "heapq", "bisect",
+    "re", "string", "fractions", "decimal", "operator", "statistics", "copy",
+    "array", "numbers", "typing", "random", "enum", "dataclasses", "types",
+}
+def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+    top = name.split(".")[0]
+    if top not in _ALLOWED_MODULES:
+        raise ImportError("import of %%r is not allowed in the sandbox" %% name)
+    return importlib.import_module(name)
+safe["__import__"] = _safe_import
 data = json.loads(sys.stdin.read())
 tests = data["tests"]
-ns = {}
+# Single namespace as globals so top-level functions can reference each other and
+# recurse (separate globals/locals would break self-recursion with a NameError).
+g = {"__builtins__": safe}
 try:
-    exec(data["code"], {"__builtins__": safe}, ns)
+    exec(data["code"], g)
 except BaseException as e:
     print(json.dumps({"passed": 0, "total": len(tests),
                       "detail": "code did not load: %%s: %%s" %% (type(e).__name__, e)}))
     sys.exit(0)
-fn = ns.get(data["entrypoint"])
+fn = g.get(data["entrypoint"])
 if not callable(fn):
     print(json.dumps({"passed": 0, "total": len(tests),
                       "detail": "no callable named '%%s' was defined" %% data["entrypoint"]}))
