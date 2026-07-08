@@ -33,15 +33,34 @@ def decide_hiring(audit: AuditSpec, reports: list[CandidateReport]) -> list[Cand
     return reports
 
 
-def form_team(audit: AuditSpec, reports: list[CandidateReport]) -> Team:
+def form_team(
+    audit: AuditSpec,
+    reports: list[CandidateReport],
+    *,
+    cost: dict[str, float] | None = None,
+    tie_tolerance: float = 1e-9,
+) -> Team:
     """Assemble a team: one best-fit candidate per competency, plus a generalist lead.
 
     Any candidate clearing a competency's bar is eligible to staff that role
     (specialist hiring); overall-hire status is required only to be the lead.
+
+    ``cost`` maps candidate name -> a relative cost (e.g. output $/Mtok). When two
+    candidates tie on a competency within ``tie_tolerance``, the cheaper one is
+    hired — so an audit that fails to separate strong from weak candidates still
+    pays off by certifying that the *cheapest sufficient* model can do the job
+    (the FrugalGPT-style win). Without ``cost``, ties fall to the first top scorer.
     """
     generalists = [r for r in reports if r.hired]
     assignments: list[RoleAssignment] = []
     unstaffed: list[str] = []
+
+    def _pick(pool: list[CandidateReport], key) -> CandidateReport:
+        top = max(key(r) for r in pool)
+        tied = [r for r in pool if key(r) >= top - tie_tolerance]
+        if cost is not None and len(tied) > 1:
+            return min(tied, key=lambda r: cost.get(r.candidate, float("inf")))
+        return tied[0]
 
     for competency in audit.competencies:
         eligible = [
@@ -62,19 +81,24 @@ def form_team(audit: AuditSpec, reports: list[CandidateReport]) -> Team:
             )
             unstaffed.append(competency)
             continue
-        best = max(eligible, key=lambda r: r.competency_scores.get(competency, 0.0))
+        best = _pick(eligible, lambda r: r.competency_scores.get(competency, 0.0))
         role_score = best.competency_scores.get(competency, 0.0)
-        note = "generalist hire" if best.hired else "specialist hire (below overall bar)"
+        tier = "generalist hire" if best.hired else "specialist hire (below overall bar)"
+        cheap = cost is not None and len([
+            r for r in eligible
+            if r.competency_scores.get(competency, 0.0) >= role_score - tie_tolerance
+        ]) > 1
+        note = f"{tier}, cheapest of the passers" if cheap else tier
         assignments.append(
             RoleAssignment(
                 competency=competency,
                 candidate=best.candidate,
                 score=role_score,
-                reason=f"top competency score {role_score:.2f} — {note}",
+                reason=f"competency score {role_score:.2f} — {note}",
             )
         )
 
-    lead = max(generalists, key=lambda r: r.overall_score).candidate if generalists else None
+    lead = _pick(generalists, lambda r: r.overall_score).candidate if generalists else None
     # The team roster is everyone actually contributing: generalist lead(s) + any
     # specialists staffed into a role.
     staffed = {a.candidate for a in assignments if a.candidate}

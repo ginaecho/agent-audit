@@ -140,7 +140,8 @@ class Harness:
         # team's roles line up with how the held-out job tasks are tagged.
         before_audit = _cost(all_providers)
         audit_run = self.pipeline.run(
-            case.requirement, self.candidates, competencies=case.competencies
+            case.requirement, self.candidates, competencies=case.competencies,
+            cost=self._cost_map(),
         )
         audit_cost = _cost(all_providers) - before_audit
 
@@ -163,6 +164,18 @@ class Harness:
 
     def run(self, cases: list[RequirementCase]) -> HarnessReport:
         return HarnessReport(cases=[self.run_case(c) for c in cases])
+
+    def _cost_map(self) -> dict[str, float]:
+        """candidate name -> output $/Mtok, so ties are broken toward the cheaper
+        model (the FrugalGPT-style win). Candidates without known pricing are
+        omitted, leaving their ties to fall to the first top scorer."""
+        from .providers import PRICING_USD_PER_MTOK
+        out: dict[str, float] = {}
+        for c in self.candidates:
+            model = getattr(c, "model", None)
+            if model in PRICING_USD_PER_MTOK:
+                out[c.name] = PRICING_USD_PER_MTOK[model][1]
+        return out
 
     # --- strategy executors ---------------------------------------------------
 

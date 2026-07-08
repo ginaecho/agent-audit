@@ -52,6 +52,25 @@ def test_weak_candidate_never_staffs_a_role(demo_run):
     assert "budget-bot" not in {a.candidate for a in team.assignments}
 
 
+def test_cost_aware_tie_break_hires_the_cheapest_passer():
+    # Two candidates tie perfectly on the only competency; the cheaper wins.
+    from agent_audit.hiring import form_team
+    from agent_audit.models import AuditSpec, CandidateReport
+
+    audit = AuditSpec(requirement="r", summary="", competencies=["c"], test_cases=[],
+                      pass_threshold=0.5, competency_threshold=0.5)
+    pricey = CandidateReport("pricey", 1.0, {"c": 1.0}, [], hired=True)
+    cheap = CandidateReport("cheap", 1.0, {"c": 1.0}, [], hired=True)
+
+    team = form_team(audit, [pricey, cheap], cost={"pricey": 25.0, "cheap": 5.0})
+    assert team.assignments[0].candidate == "cheap"
+    assert team.lead == "cheap"
+    assert "cheapest" in team.assignments[0].reason
+    # Without a cost map, the tie falls to the first top scorer (stable behavior).
+    team2 = form_team(audit, [pricey, cheap])
+    assert team2.assignments[0].candidate == "pricey"
+
+
 def test_run_artifact_is_json_serializable(demo_run):
     blob = json.dumps(demo_run.to_dict(), default=str)
     assert '"hired"' in blob
