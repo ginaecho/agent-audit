@@ -51,6 +51,28 @@ publishable run is `experiments/run_harness.py` with a real API key.
   it, audit-hire would have defaulted to opus and shown no benefit over
   `biggest_model`.
 
+### Addendum — the tie was a scoring artifact, not a real tie
+
+The "3-way tie" above came from a **correctness-only** rubric. Re-scoring the exact
+same real-model answers with **efficiency** (correctness × cost, cheapest-correct
+wins — `experiments/rescore_efficiency.py`) recovers a strong signal:
+
+| candidate | correct | tokens | cost $ | efficiency |
+|---|---|---|---|---|
+| opus | 1.00 | 22030 | 0.5507 | 0.19 |
+| sonnet | 1.00 | 27453 | 0.4118 | 0.25 |
+| **haiku** | 1.00 | 20840 | 0.1042 | **1.00** |
+
+- discrimination (correctness-only): **0.00** — no hiring signal
+- discrimination (efficiency): **0.81** — separated; hires **haiku** (correct *and*
+  cheapest path)
+
+So the strategist's job is twofold: (1) design items difficult enough to separate
+candidates, and (2) score the **shortest / cheapest path to a correct answer**, not
+just correctness. Under (2), even an "easy" task discriminates — you're measuring
+capability *per unit cost*, which is exactly the trait being hired for. (Token counts
+here are rough subagent totals; a clean run instruments per-task model tokens.)
+
 ### Next run needed to test the harder claim
 
 To show the **quality-routing** benefit (not just the cost benefit), we need a case

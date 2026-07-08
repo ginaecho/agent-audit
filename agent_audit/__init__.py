@@ -31,6 +31,15 @@ from .models import (
     TestCase,
 )
 from .pipeline import AuditPipeline, AuditRun
+from .scoring import (
+    Attempt,
+    Effort,
+    discrimination_index,
+    efficiency_leaderboard,
+    efficiency_score,
+    is_discriminating,
+    rank_task,
+)
 from .providers import (
     CANDIDATE_MODELS,
     JUDGE_MODEL,
@@ -72,6 +81,13 @@ __all__ = [
     "STRATEGIST_MODEL",
     "JUDGE_MODEL",
     "CANDIDATE_MODELS",
+    "Attempt",
+    "Effort",
+    "efficiency_score",
+    "rank_task",
+    "efficiency_leaderboard",
+    "discrimination_index",
+    "is_discriminating",
     "decide_hiring",
     "form_team",
     "__version__",
