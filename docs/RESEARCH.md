@@ -39,6 +39,14 @@ requirement ─▶ STRATEGIST writes a bespoke audit ─▶ run vs. candidates �
   ICML 2024, arXiv:2405.13622) — auto-synthesizes a multiple-choice "exam" from a
   corpus and prunes uninformative questions via IRT to pick the best RAG config.
   The clearest "exam for candidate systems" precedent.
+- **AdaRubric — task-adaptive rubrics** (Ding et al., 2026, arXiv:2603.21362) —
+  generates an evaluation rubric on the fly from a task description and scores agent
+  trajectories per-dimension, instead of applying a fixed rubric. This is the direct
+  precedent for `agent-audit`'s strategist writing a bespoke `rubric` on every
+  `llm_judge` check: the grading criteria are *derived from the requirement*, not
+  templated. **CheckList**'s behavioral-test taxonomy (Minimum Functionality /
+  Invariance / Directional tests) similarly informs the shape of the objective
+  checks the strategist emits (`equals`/`contains`/`regex`/`json_path_equals`/…).
 
 ## 2. LLM-as-judge is mature — and so are its failure modes
 
