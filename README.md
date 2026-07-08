@@ -166,6 +166,44 @@ requested keys"), never the literal test answers. Try it on the weakest model:
 python experiments/run_coaching.py --candidate claude-haiku-4-5
 ```
 
+## The strategist's real skill: design until it discriminates, score capability-per-cost
+
+An audit where every candidate scores the same is worthless for hiring. So the
+strategist (the most powerful agent) does two things beyond writing questions:
+
+**1. Efficiency-weighted scoring (`scoring.py`).** Correctness alone often ties
+capable models. The real signal is **the shortest / cheapest path to a correct
+answer** — a correct answer in fewer tokens, fewer tool-calls, fewer agent-loop
+steps, and less wall-clock time (speed) beats one that cost more. `discrimination_index`
+tells you whether a set of scores actually separates candidates. Re-scoring the real
+run-1 data (see `docs/RESULTS.md`): correctness discrimination `0.00` → efficiency
+discrimination `0.81`, hiring `haiku` (correct **and** cheapest).
+
+**2. Adaptive discrimination loop (`adaptive.py`).** The strategist authors an exam,
+screens the candidates, measures separation, and if they're too close it **hardens
+the exam and retries** until they're distinguishable (AutoBencher-style separability,
+run online per requirement).
+
+**3. Executable / agentic tasks (`execution.py`).** The sharpest discrimination comes
+from tasks the candidate must *solve*, not answer: "write a function that passes these
+hidden tests" (or "use this MCP tool to retrieve X"). Candidates run in an agent loop
+— write → run → read the error → fix — and the score is **who reaches green in the
+fewest steps / tokens / seconds**. `Effort(tokens, tool_calls, steps, latency_s)` and
+`AGENTIC_WEIGHTS` fold speed and path length into the ranking.
+
+The two compose — the loop uses the executable tasks' sharp signal to know when the
+exam separates. See it end to end (offline, no key):
+
+```bash
+python experiments/run_agentic_audit.py
+```
+
+```
+round 0: discrimination 0.00 ✗ too close  [ace:1.00  grinder:1.00  novice:1.00]
+round 1: discrimination 1.00 ✅ separates  [ace:1.00  grinder:0.49  novice:0.00]
+=> hire: ace  (reaches green correctly in the fewest steps/tokens/time)
+```
+
 ## How it fits together
 
 | Module | Role |
@@ -177,6 +215,9 @@ python experiments/run_coaching.py --candidate claude-haiku-4-5
 | `grader.py` | deterministic checks + a separate rubric-driven LLM judge |
 | `hiring.py` | pass/fail hiring and best-fit team formation (specialist hires included) |
 | `coach.py` | failures → improvement plan → attachable skill (the coaching loop) |
+| `scoring.py` | efficiency scoring (cheapest/shortest-path-to-correct) + discrimination metrics |
+| `adaptive.py` | the loop that hardens the exam until candidates separate |
+| `execution.py` | executable/agentic tasks scored by shortest-path-to-green (steps/tokens/speed) |
 | `harness.py` | audit-hire vs. baselines on held-out job tasks, quality + cost |
 | `pipeline.py` | wires it all together, emits the `AuditRun` artifact |
 | `experiments/` | requirement cases + real-model runners for the study above |

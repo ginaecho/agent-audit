@@ -25,6 +25,12 @@ from dataclasses import dataclass, field
 from statistics import pstdev
 
 
+# Default cost weights for agentic/executable tasks: fewer tokens, fewer tool calls,
+# fewer agent-loop steps, AND lower wall-clock (speed) all reduce cost -> raise the
+# efficiency score. Tuned so path length and speed dominate raw token counts.
+AGENTIC_WEIGHTS = {"tokens": 1.0, "tool_calls": 800.0, "steps": 3000.0, "latency_s": 4000.0}
+
+
 @dataclass
 class Effort:
     """What it cost a candidate to (attempt to) solve one task."""

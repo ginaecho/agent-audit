@@ -98,10 +98,15 @@ class Strategist:
         *,
         version: int = 1,
         competencies: list[str] | None = None,
+        harden_feedback: str | None = None,
     ) -> AuditSpec:
         """Author an audit. Pass ``competencies`` to pin the role vocabulary —
         needed when downstream work (e.g. the harness's job tasks) is already
-        tagged with specific competency names the team must be staffed under."""
+        tagged with specific competency names the team must be staffed under.
+
+        Pass ``harden_feedback`` (from the adaptive loop) when a previous exam
+        failed to separate candidates; the strategist is told to make the items
+        substantially harder and more discriminating."""
         constraint = ""
         if competencies:
             names = ", ".join(f'"{c}"' for c in competencies)
@@ -109,9 +114,19 @@ class Strategist:
                 f"\n\nUse EXACTLY these competency names (cover each with >=1 test "
                 f"case, add no others): [{names}]"
             )
+        harden = ""
+        if harden_feedback:
+            harden = (
+                "\n\nThe previous version of this audit FAILED TO DISCRIMINATE the "
+                "candidates (their scores were too close to make a hiring decision). "
+                "Make this version substantially harder and more separating: add edge "
+                "cases, adversarial inputs, multi-step reasoning, and tighter checks "
+                "that a weaker candidate will get wrong but a stronger one will pass. "
+                f"Details:\n{harden_feedback}"
+            )
         user_prompt = (
             "Design an audit for the following system requirement.\n\n"
-            f"REQUIREMENT:\n{requirement.strip()}{constraint}\n\n"
+            f"REQUIREMENT:\n{requirement.strip()}{constraint}{harden}\n\n"
             "Return only the JSON object described in your instructions."
         )
         raw = self.provider.complete(user_prompt, system=SYSTEM_PROMPT)
