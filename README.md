@@ -268,12 +268,31 @@ billed by API — `python experiments/cost_estimate.py`):
 | haiku | 165,381 | $0.83 |
 | **total** | **557,130** | **~$8.45** (realistically ~$3–5, much is cached context) |
 
-That ~$8 buys *only the candidate interviews* for one session — it excludes the
-strategist's design/grading/iteration (Opus 4.8, the dominant cost) and the prior
-tied rounds that produced no signal. Scaled to the full 4-model policy with
-paid API calls and repeated sampling, a single discriminating audit is a
-**multi-dollar-to-tens-of-dollars** exercise, most of it spent on tests that don't
-separate anyone.
+That ~$8 buys *only the candidate interviews* for one session. The costlier,
+serial part is the **strategist (Opus 4.8) rounds that generate the tests** — design
+a test, author brute-force ground truth, grade, iterate — once per round, and most
+rounds tie. Counting those rounds (estimate; the main loop's own tokens aren't
+exposed to it, so per-round tokens are modeled — see `experiments/cost_estimate.py`):
+
+| | rounds | Opus 4.8 cost (est.) |
+|---|---|---|
+| this session | 4 | ~$2.2 |
+| whole project | **~16** | **~$5** |
+| — of which tied (no signal) | 15 / 16 | ~$3.5 wasted |
+
+At ~$0.23/round (4k output @ $25/Mtok + 18k fresh input @ $5 + 90k cached context
+@ ~$0.50), **finding one genuine quality gap cost ~16 Opus 4.8 rounds ≈ $5.** In this
+streamlined session that lands *comparable* to the candidate interviews rather than
+far above them — but it is a **floor**, because here ground truth was hand-authored
+in Python rather than driven through Opus's full adaptive-hardening loop. At scale the
+strategist becomes the dominant line item for three compounding reasons: (1) it runs at
+the highest per-token price (Opus 4.8, 5× haiku output), (2) Opus 4.8 *also* serves as
+the verbal-task **judge**, touching most of the pipeline, and (3) low discrimination
+yield means **many rounds** — you pay Opus repeatedly to author tests that mostly tie.
+Scaled to the full 4-model policy with paid API calls, adaptive design loops, and
+repeated sampling, a single discriminating audit is a
+**multi-dollar-to-tens-of-dollars** exercise, most of it Opus-priced design spend on
+tests that don't separate anyone.
 
 **Implication for the design:** an audit is a *certificate you pay for*, so spend
 must be justified by decisions it changes. Practical levers: reuse/cache
