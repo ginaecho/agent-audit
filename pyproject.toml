@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-audit"
+version = "0.1.0"
+description = "Audit-driven screening to hire and team up AI agents: a strategist LLM turns user intent into an audit, tests candidate LLMs/agents against it, and hires the ones that pass."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "ginaecho" }]
+keywords = ["llm", "agents", "evaluation", "routing", "hiring", "anthropic", "claude"]
+dependencies = []
+
+[project.optional-dependencies]
+# The core engine has zero required deps and runs fully offline with the mock provider.
+# Install this extra to screen real Claude models.
+anthropic = ["anthropic>=0.40"]
+dev = ["pytest>=7", "anthropic>=0.40"]
+
+[project.scripts]
+agent-audit = "agent_audit.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ginaecho/agent-audit"
+Repository = "https://github.com/ginaecho/agent-audit"
+
+[tool.setuptools.packages.find]
+include = ["agent_audit*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
