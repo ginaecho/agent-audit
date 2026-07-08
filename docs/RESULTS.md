@@ -1,5 +1,47 @@
 # Results
 
+## Run 5 — a GENUINE quality gap, found honestly via reliability, 2026-07
+
+Runs so far showed frontier tiers tie on *single-shot correctness* — 8 hard coding
+problems and a 10-item prose reasoning battery all tied at 1.00 (opus = sonnet =
+haiku). A single early haiku miss on one counting item did **not** reproduce when
+re-run in a controlled battery (all three hit 10/10); reporting that lone sample as
+a "gap" would have been cherry-picking, i.e. cheating, so we didn't.
+
+The honest differentiator appears only under **repeated sampling**. The same hard
+inclusion–exclusion counting battery (5 items: digit-sum counts over large ranges),
+run **4 times per model**, prose-only (no code, no tools), graded against
+brute-forced ground truth:
+
+| model  | item pass-rate | trials fully correct |
+|--------|----------------|----------------------|
+| opus   | 20/20 = **1.00** | 4/4 |
+| sonnet | 20/20 = **1.00** | 4/4 |
+| haiku  | 13/20 = **0.65** | 1/4 |
+
+Haiku is reliable on small/few-term items (P1 4/4, P4 4/4) but slips on the 6-digit
+ranges needing more inclusion–exclusion terms (P2 2/4, P3 2/4, P5 1/4): it drops
+terms, makes arithmetic errors, and uses an error-prone `f(k,S)−f(k−1,S)`
+decomposition that compounds mistakes. Opus/sonnet use the closed form and
+self-check via the s↔9n−s symmetry → 100%.
+
+**Why this is not cheating:** identical fair prompts, objective brute-forced ground
+truth, unmodified models (no persona, no induced handicap), no tooling artifact. The
+gap is *variance/reliability*, surfaced by sampling — not a single lucky/unlucky run.
+
+**The audit consequence (quality-routing on a real gap):** for the counting
+competency, correctness ties (1.00/1.00/0.65) hide the signal in one shot; the
+reliability lens separates them (discrimination = 0.35 item-level, 0.75
+trial-level). Audit-hire routes counting to the cheapest **reliable** passer —
+**sonnet** (100%, cheaper than opus) — rejects **haiku** there (65% → ships a wrong
+count ~1 run in 3), and still uses cheap haiku on competencies where it's reliable.
+That beats always-haiku on quality (1.00 vs 0.65) and always-opus on cost — the full
+thesis, now on a **naturally-occurring** gap rather than an induced one.
+Data: `experiments/results/reliability_sweep.md`. Broader synthesis and application
+proposal: `docs/FINDINGS_AND_OPEN_PROBLEMS.md`.
+
+---
+
 ## Run 4 — honest attempt at a NATURAL quality gap (null result), 2026-07
 
 Run 3's weak agent was *induced* (a persona). Run 4 asks the harder, honest question:
