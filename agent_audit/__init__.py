@@ -18,6 +18,7 @@ Screen real Claude models by swapping in ``AnthropicProvider`` (install the
 """
 
 from .adaptive import AdaptiveResult, adaptive_text_audit, design_discriminating
+from .agentic_harness import AgenticCase, AgenticHarness
 from .coach import Coach, CompetencyGuidance, ImprovementPlan
 from .execution import (
     CodingAudit,
@@ -88,6 +89,8 @@ __all__ = [
     "HarnessReport",
     "JobTask",
     "RequirementCase",
+    "AgenticHarness",
+    "AgenticCase",
     "STRATEGIST_MODEL",
     "JUDGE_MODEL",
     "CANDIDATE_MODELS",

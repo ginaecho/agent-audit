@@ -1,5 +1,46 @@
 # Results
 
+## Run 2 — agentic/executable, real-model (free via subagents), 2026-07
+
+Validated the **agentic** path for free (session models, no API spend), per the
+"prove it before you pay" principle. `opus`/`sonnet`/`haiku` each wrote real code for
+a screening audit (`merge`, `decode`) and a **held-out** job (`insert`, `evaluate`),
+graded in the subprocess sandbox; effort = real subagent tokens × output price
+(`experiments/subagent_run_agentic.py`).
+
+**All three models passed every hidden test on all four tasks** — including the hard
+`evaluate` (operator precedence) and the interval edge cases. So, again, correctness
+does not discriminate them. Held-out job:
+
+| strategy | quality | efficiency | cost $ |
+|---|---|---|---|
+| **audit_hire** | 1.00 | 1.00 | **0.21** |
+| always_haiku | 1.00 | 1.00 | 0.21 |
+| always_sonnet | 1.00 | 0.25 | 0.81 |
+| always_opus | 1.00 | 0.19 | 1.08 |
+
+**audit-hire matched the best model's quality at ~1/5 the cost of always-opus**, by
+screening-then-certifying that haiku is sufficient for both competencies. It ties
+always-haiku here (both use haiku) — but with a *guarantee* from the audit rather than
+a blind bet. Correctness discrimination on the hardest task (`evaluate`): **0.00**.
+
+**Honest status of the two claims:**
+- ✅ **Cost claim — demonstrated twice** (text run 1, agentic run 2): a per-task audit
+  lets you hire the cheapest *sufficient* model and match top-tier quality at a
+  fraction of the cost. This is the FrugalGPT result, but driven by a requirement-
+  specific audit rather than an offline classifier, and it now holds on executable
+  code tasks, not just text.
+- ⏳ **Quality-routing claim — still untriggered.** Because frontier models pass these
+  tasks, the "weak model fails a competency → audit reroutes to a stronger one → beats
+  always-cheapest" case never fired. Demonstrating it needs genuinely *discriminating*
+  tasks (adversarial edge cases, or a much weaker candidate in the pool). This is the
+  single most important next experiment — and it's exactly what the adaptive
+  discrimination loop (`adaptive.py`) exists to search for.
+
+---
+
+# Earlier results
+
 ## Run 1 — `claim_verification`, real-model approximation (2026-07)
 
 **Setup.** This sandbox had no standalone API key, so candidate answers were produced
