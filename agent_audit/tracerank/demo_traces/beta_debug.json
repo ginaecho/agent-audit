@@ -1,0 +1,22 @@
+{
+  "version": 3,
+  "responderUsername": "GitHub Copilot",
+  "requests": [
+    {
+      "modelId": "gpt-4o-mini",
+      "timestamp": 1710200000000,
+      "message": { "text": "fix the crash when the config file is missing" },
+      "response": [ { "value": "Wrapped the read in a try/except." } ],
+      "result": { "errorDetails": { "message": "tests failed: 3 failing" } },
+      "isCanceled": false
+    },
+    {
+      "modelId": "gpt-4o-mini",
+      "timestamp": 1710200090000,
+      "message": { "text": "no that's wrong, still broken, ugh" },
+      "response": [ { "value": "Sorry, let me try again." } ],
+      "result": {},
+      "isCanceled": true
+    }
+  ]
+}

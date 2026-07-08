@@ -1,0 +1,24 @@
+{
+  "version": 3,
+  "responderUsername": "GitHub Copilot",
+  "requests": [
+    {
+      "modelId": "gpt-4o",
+      "timestamp": 1710000000000,
+      "message": { "text": "fix the failing test in utils.py" },
+      "response": [
+        { "value": "Found an off-by-one in `slice_window`. Patched it. " },
+        { "value": "Ran the suite: all tests passed, exit code 0." }
+      ],
+      "result": {},
+      "isCanceled": false
+    },
+    {
+      "modelId": "gpt-4o",
+      "timestamp": 1710000045000,
+      "message": { "text": "perfect, thanks!" },
+      "response": [ { "value": "Glad it works — anything else?" } ],
+      "result": {}
+    }
+  ]
+}

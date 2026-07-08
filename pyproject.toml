@@ -29,5 +29,8 @@ Repository = "https://github.com/ginaecho/agent-audit"
 [tool.setuptools.packages.find]
 include = ["agent_audit*"]
 
+[tool.setuptools.package-data]
+"agent_audit.tracerank" = ["demo_traces/*.json", "demo_traces/*.jsonl"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

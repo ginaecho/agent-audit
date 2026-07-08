@@ -1,0 +1,22 @@
+{
+  "version": 3,
+  "responderUsername": "GitHub Copilot",
+  "requests": [
+    {
+      "modelId": "gpt-4o-mini",
+      "timestamp": 1710400000000,
+      "message": { "text": "the parser test is failing, fix it" },
+      "response": [ { "value": "Updated the tokenizer regex." } ],
+      "result": { "errorDetails": { "message": "tests failed: 2 failing" } },
+      "isCanceled": false
+    },
+    {
+      "modelId": "gpt-4o-mini",
+      "timestamp": 1710400080000,
+      "message": { "text": "still broken, that's wrong" },
+      "response": [ { "value": "Let me look again." } ],
+      "result": {},
+      "isCanceled": true
+    }
+  ]
+}

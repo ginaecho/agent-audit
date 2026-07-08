@@ -1,0 +1,24 @@
+{
+  "version": 3,
+  "responderUsername": "GitHub Copilot",
+  "requests": [
+    {
+      "modelId": "gpt-4o-mini",
+      "timestamp": 1710300000000,
+      "message": { "text": "add a --verbose flag to the CLI" },
+      "response": [
+        { "value": "Added `--verbose` wired to the logger level. " },
+        { "value": "Tests pass." }
+      ],
+      "result": {},
+      "isCanceled": false
+    },
+    {
+      "modelId": "gpt-4o-mini",
+      "timestamp": 1710300075000,
+      "message": { "text": "ok" },
+      "response": [ { "value": "Done." } ],
+      "result": {}
+    }
+  ]
+}
