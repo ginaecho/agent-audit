@@ -75,14 +75,16 @@ class AuditPipeline:
         candidates: list[Provider],
         *,
         audit: AuditSpec | None = None,
+        competencies: list[str] | None = None,
     ) -> AuditRun:
         """Screen ``candidates`` against ``requirement`` and hire a team.
 
         Pass a pre-built ``audit`` to re-run an existing exam (re-certification)
-        instead of authoring a fresh one.
+        instead of authoring a fresh one, or ``competencies`` to pin the role
+        vocabulary the strategist must use (see ``Strategist.design_audit``).
         """
         if audit is None:
-            audit = self.strategist.design_audit(requirement)
+            audit = self.strategist.design_audit(requirement, competencies=competencies)
         reports = [self.runner.run(audit, candidate) for candidate in candidates]
         decide_hiring(audit, reports)
         team = form_team(audit, reports)

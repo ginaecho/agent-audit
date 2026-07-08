@@ -110,17 +110,76 @@ my_agent = FunctionProvider("rag-agent", lambda prompt, system: my_rag.run(promp
 run = pipeline.run(requirement, [my_agent, AnthropicProvider("claude-sonnet-5")])
 ```
 
+## The evaluation harness: does audit-hiring actually beat naive picks?
+
+The falsifiable claim this project rests on: **an LLM-authored, requirement-specific
+audit predicts on-the-job performance better than picking by leaderboard rank or by
+"just use the biggest model."** `agent_audit/harness.py` + `experiments/` run that
+experiment end to end:
+
+1. the strategist authors an audit from the requirement (never sees the job tasks);
+2. candidates are screened and a team is hired;
+3. every strategy then answers **held-out job tasks** the audit never saw —
+   `audit_hire` routes each task to the team member staffed on its competency,
+   while each baseline uses one fixed model for everything;
+4. the same judge grades all job answers, and provider token usage is priced, so
+   the output is a **quality + cost** table per requirement.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+python experiments/run_harness.py          # all three requirement cases
+```
+
+**Model policy for the study (no Fable 5 anywhere):**
+
+| Role | Model | Why |
+|---|---|---|
+| strategist (authors exam) | `claude-opus-4-8` | most capable; **not** a candidate |
+| judge (grades rubrics) | `claude-opus-4-7` | strong; **not** a candidate, **not** the author |
+| candidates under audit | `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-sonnet-5`, `claude-haiku-4-5` | the pool being hired from |
+| baselines | biggest (`opus-4-6`) · leaderboard pick (`sonnet-5`) · cheapest (`haiku-4-5`) | what audit-hire must beat |
+
+Author, grader, and examinees are three separate parties by construction
+(self-preference bias, see `docs/RESEARCH.md` §2).
+
+## The audit is also a coach: audit → guidance → improve → re-audit
+
+An agent is a model **plus skills** — so improving an agent's skills is itself a
+hiring path, and the audit should both *guide* and *verify* that improvement.
+`agent_audit/coach.py` turns a candidate's concrete failures (which check, what was
+expected, what it answered) into an `ImprovementPlan` whose `skill_text` attaches
+straight onto the agent:
+
+```python
+from agent_audit import Coach, SkilledProvider
+
+plan   = Coach(coach=strategist).improvement_plan(audit, report_a)   # diagnose A
+agent_b = SkilledProvider(agent_a, plan.skill_text)                  # A + skill = B
+run_b  = pipeline.run(requirement, [agent_b], audit=audit)           # SAME exam
+```
+
+The re-run uses the *same* audit, so the uplift is measured by the instrument that
+prescribed it. Guidance is generalized ("always return ONLY a JSON object with the
+requested keys"), never the literal test answers. Try it on the weakest model:
+
+```bash
+python experiments/run_coaching.py --candidate claude-haiku-4-5
+```
+
 ## How it fits together
 
 | Module | Role |
 |---|---|
 | `strategist.py` | the powerful model that authors the audit from a requirement |
 | `models.py` | dataclasses for the audit, results, and team (all JSON-serializable) |
-| `providers.py` | `Provider` abstraction: `Anthropic`, `Mock` (offline), `Function` (agents) |
+| `providers.py` | `Provider` abstraction: `Anthropic` (usage/cost-tracked), `Mock` (offline), `Function` (agents), `Skilled` (agent = model + skill) |
 | `runner.py` | runs the audit against one candidate, aggregates per-competency scores |
 | `grader.py` | deterministic checks + a separate rubric-driven LLM judge |
-| `hiring.py` | pass/fail hiring and best-fit team formation |
+| `hiring.py` | pass/fail hiring and best-fit team formation (specialist hires included) |
+| `coach.py` | failures → improvement plan → attachable skill (the coaching loop) |
+| `harness.py` | audit-hire vs. baselines on held-out job tasks, quality + cost |
 | `pipeline.py` | wires it all together, emits the `AuditRun` artifact |
+| `experiments/` | requirement cases + real-model runners for the study above |
 
 ## Run the tests
 
@@ -134,8 +193,10 @@ tests every grader check.
 
 ## Status
 
-Early prototype (v0.1). The engine is real and runnable; the offline path needs no
-credentials. Natural next steps: pluggable execution backends (e.g. Inspect for
+Early prototype (v0.1). The engine, coaching loop, and evaluation harness are real
+and runnable; the offline path needs no credentials, and `experiments/` is ready to
+run against real models once results are wanted. Natural next steps: run the study
+and report the quality/cost table, pluggable execution backends (e.g. Inspect for
 agentic/tool-use audits), adversarial/red-team test generation, multi-judge panels
 with position-bias calibration, and periodic re-certification scheduling.
 

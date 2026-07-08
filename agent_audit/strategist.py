@@ -92,10 +92,26 @@ class Strategist:
     def __init__(self, provider: Provider) -> None:
         self.provider = provider
 
-    def design_audit(self, requirement: str, *, version: int = 1) -> AuditSpec:
+    def design_audit(
+        self,
+        requirement: str,
+        *,
+        version: int = 1,
+        competencies: list[str] | None = None,
+    ) -> AuditSpec:
+        """Author an audit. Pass ``competencies`` to pin the role vocabulary —
+        needed when downstream work (e.g. the harness's job tasks) is already
+        tagged with specific competency names the team must be staffed under."""
+        constraint = ""
+        if competencies:
+            names = ", ".join(f'"{c}"' for c in competencies)
+            constraint = (
+                f"\n\nUse EXACTLY these competency names (cover each with >=1 test "
+                f"case, add no others): [{names}]"
+            )
         user_prompt = (
             "Design an audit for the following system requirement.\n\n"
-            f"REQUIREMENT:\n{requirement.strip()}\n\n"
+            f"REQUIREMENT:\n{requirement.strip()}{constraint}\n\n"
             "Return only the JSON object described in your instructions."
         )
         raw = self.provider.complete(user_prompt, system=SYSTEM_PROMPT)

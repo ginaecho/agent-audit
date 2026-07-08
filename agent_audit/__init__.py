@@ -17,6 +17,8 @@ Screen real Claude models by swapping in ``AnthropicProvider`` (install the
 ``anthropic`` extra). See ``examples/`` and ``docs/RESEARCH.md``.
 """
 
+from .coach import Coach, CompetencyGuidance, ImprovementPlan
+from .harness import Harness, HarnessReport, JobTask, RequirementCase
 from .hiring import decide_hiring, form_team
 from .models import (
     AuditSpec,
@@ -30,10 +32,14 @@ from .models import (
 )
 from .pipeline import AuditPipeline, AuditRun
 from .providers import (
+    CANDIDATE_MODELS,
+    JUDGE_MODEL,
+    STRATEGIST_MODEL,
     AnthropicProvider,
     FunctionProvider,
     MockProvider,
     Provider,
+    SkilledProvider,
 )
 from .strategist import Strategist
 
@@ -55,6 +61,17 @@ __all__ = [
     "MockProvider",
     "FunctionProvider",
     "AnthropicProvider",
+    "SkilledProvider",
+    "Coach",
+    "ImprovementPlan",
+    "CompetencyGuidance",
+    "Harness",
+    "HarnessReport",
+    "JobTask",
+    "RequirementCase",
+    "STRATEGIST_MODEL",
+    "JUDGE_MODEL",
+    "CANDIDATE_MODELS",
     "decide_hiring",
     "form_team",
     "__version__",
