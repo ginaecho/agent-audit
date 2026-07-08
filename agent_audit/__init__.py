@@ -19,7 +19,15 @@ Screen real Claude models by swapping in ``AnthropicProvider`` (install the
 
 from .adaptive import AdaptiveResult, adaptive_text_audit, design_discriminating
 from .coach import Coach, CompetencyGuidance, ImprovementPlan
-from .execution import CodingTask, run_coding_audit, run_code, solve_coding_task
+from .execution import (
+    CodingAudit,
+    CodingTask,
+    build_coding_audit,
+    run_code,
+    run_coding_audit,
+    solve_coding_task,
+)
+from .sandbox import run_code_sandboxed
 from .harness import Harness, HarnessReport, JobTask, RequirementCase
 from .hiring import decide_hiring, form_team
 from .models import (
@@ -94,9 +102,12 @@ __all__ = [
     "adaptive_text_audit",
     "AdaptiveResult",
     "CodingTask",
+    "CodingAudit",
+    "build_coding_audit",
     "solve_coding_task",
     "run_coding_audit",
     "run_code",
+    "run_code_sandboxed",
     "decide_hiring",
     "form_team",
     "__version__",

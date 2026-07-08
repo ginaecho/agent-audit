@@ -30,6 +30,11 @@ from typing import Any, Callable
 from .providers import Provider
 from .scoring import Attempt, Effort
 
+# A runner turns (code, entrypoint, hidden_tests) into (pass_fraction, detail, seconds).
+# ``run_code`` (in-process) is the default; ``sandbox.run_code_sandboxed`` is the
+# drop-in for untrusted model code.
+Runner = Callable[[str, str, list], tuple[float, str, float]]
+
 # A conservative allowlist of builtins available to candidate code.
 _SAFE_BUILTINS = {
     k: __builtins__[k] if isinstance(__builtins__, dict) else getattr(__builtins__, k)
@@ -56,6 +61,45 @@ class CodingTask:
     entrypoint: str
     hidden_tests: list[tuple[tuple, Any]]
     weight: float = 1.0
+
+
+@dataclass
+class CodingAudit:
+    """A set of executable tasks the strategist authored from a requirement."""
+
+    requirement: str
+    summary: str
+    competencies: list[str]
+    tasks: list[CodingTask]
+    version: int = 1
+
+
+def build_coding_audit(requirement: str, data: dict, *, version: int = 1) -> CodingAudit:
+    """Parse a strategist's JSON into a CodingAudit (see Strategist.design_coding_audit)."""
+    competencies = list(data.get("competencies") or [])
+    tasks: list[CodingTask] = []
+    for i, t in enumerate(data.get("tasks") or []):
+        hidden = []
+        for case in t.get("hidden_tests") or []:
+            args = case.get("args", [])
+            if not isinstance(args, list):
+                args = [args]
+            hidden.append((tuple(args), case.get("expected")))
+        if not hidden or "entrypoint" not in t:
+            continue
+        competency = t.get("competency") or (competencies[0] if competencies else "coding")
+        if competency not in competencies:
+            competencies.append(competency)
+        tasks.append(CodingTask(
+            id=t.get("id") or f"task_{i+1}",
+            competency=competency,
+            prompt=t["prompt"],
+            entrypoint=t["entrypoint"],
+            hidden_tests=hidden,
+        ))
+    if not tasks:
+        raise ValueError("Coding audit has no runnable tasks with hidden tests.")
+    return CodingAudit(requirement, data.get("summary", ""), competencies, tasks, version)
 
 
 def extract_code(text: str) -> str:
@@ -110,12 +154,16 @@ def solve_coding_task(
     *,
     max_steps: int = 4,
     system: str | None = None,
+    runner: Runner = run_code,
 ) -> Attempt:
     """Run ``candidate`` as an agent on ``task``: write -> run -> fix, until green.
 
     Returns an ``Attempt`` whose ``correctness`` is the best pass-fraction reached and
     whose ``Effort`` records the path: total tokens, number of steps (write/run
     cycles), and cumulative wall-clock time (generation + execution = "speed").
+
+    ``runner`` grades the candidate's code; pass ``sandbox.run_code_sandboxed`` to run
+    untrusted model code in an isolated subprocess.
     """
     instruction = (
         f"{task.prompt}\n\nDefine a Python function named `{task.entrypoint}`. "
@@ -133,7 +181,7 @@ def solve_coding_task(
         gen_latency = time.perf_counter() - t0
         tokens += _estimate_tokens(candidate, prompt, out)
         code = extract_code(out)
-        frac, detail, exec_latency = run_code(code, task.entrypoint, task.hidden_tests)
+        frac, detail, exec_latency = runner(code, task.entrypoint, task.hidden_tests)
         latency += gen_latency + exec_latency
         best = max(best, frac)
         if frac >= 1.0:
@@ -152,9 +200,11 @@ def run_coding_audit(
     *,
     max_steps: int = 4,
     system: str | None = None,
+    runner: Runner = run_code,
 ) -> dict[str, list[Attempt]]:
     """Every candidate attempts every task. Returns candidate -> per-task Attempts."""
     return {
-        c.name: [solve_coding_task(c, t, max_steps=max_steps, system=system) for t in tasks]
+        c.name: [solve_coding_task(c, t, max_steps=max_steps, system=system, runner=runner)
+                 for t in tasks]
         for c in candidates
     }

@@ -191,11 +191,20 @@ hidden tests" (or "use this MCP tool to retrieve X"). Candidates run in an agent
 fewest steps / tokens / seconds**. `Effort(tokens, tool_calls, steps, latency_s)` and
 `AGENTIC_WEIGHTS` fold speed and path length into the ranking.
 
-The two compose — the loop uses the executable tasks' sharp signal to know when the
-exam separates. See it end to end (offline, no key):
+**The strategist authors these tasks itself** (`Strategist.design_coding_audit`) —
+LLM-generated prompts *and hidden tests*, with the same `harden_feedback` hook so the
+adaptive loop drives auto-designed coding audits. And candidate code runs in a
+**subprocess sandbox** (`sandbox.run_code_sandboxed`): CPU/memory/file rlimits, a
+wall-clock timeout, a scrubbed env, and restricted builtins (no `open`, no imports) —
+a drop-in `runner=` for `solve_coding_task`. (Defense in depth, not a guarantee; for
+hostile code at scale, wrap it in a container with no network.)
+
+The pieces compose — the loop uses the executable tasks' sharp signal to know when
+the exam separates. See it end to end (offline, no key):
 
 ```bash
-python experiments/run_agentic_audit.py
+python experiments/run_agentic_audit.py             # adaptive design + executable scoring
+python experiments/run_authored_agentic_audit.py    # strategist authors tasks + sandboxed run
 ```
 
 ```
@@ -217,7 +226,8 @@ round 1: discrimination 1.00 ✅ separates  [ace:1.00  grinder:0.49  novice:0.00
 | `coach.py` | failures → improvement plan → attachable skill (the coaching loop) |
 | `scoring.py` | efficiency scoring (cheapest/shortest-path-to-correct) + discrimination metrics |
 | `adaptive.py` | the loop that hardens the exam until candidates separate |
-| `execution.py` | executable/agentic tasks scored by shortest-path-to-green (steps/tokens/speed) |
+| `execution.py` | executable/agentic tasks (strategist-authored) scored by shortest-path-to-green |
+| `sandbox.py` | subprocess sandbox (rlimits + timeout + restricted builtins) for untrusted code |
 | `harness.py` | audit-hire vs. baselines on held-out job tasks, quality + cost |
 | `pipeline.py` | wires it all together, emits the `AuditRun` artifact |
 | `experiments/` | requirement cases + real-model runners for the study above |

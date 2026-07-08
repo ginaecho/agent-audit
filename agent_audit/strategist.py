@@ -88,9 +88,79 @@ Return ONLY a JSON object (no prose, no markdown fence) with this exact shape:
 """
 
 
+CODING_SYSTEM_PROMPT = """\
+You are the Strategist. Design an EXECUTABLE audit for a system requirement: a set of \
+coding tasks a candidate agent must solve by writing a Python function that passes \
+hidden tests. The candidate sees only the task prompt; it never sees the hidden tests.
+
+Your goal is a DISCRIMINATING audit — tasks whose hidden tests include edge cases a \
+weak candidate will get wrong (empty input, unsorted/duplicate input, boundary values, \
+adjacency, overflow, tricky types) while a strong one passes. A task everyone passes \
+tells you nothing.
+
+Rules:
+- 2-5 tasks, each tagged with a competency.
+- Each task: a clear `prompt` (spec only, NO solution), an `entrypoint` function name, \
+  and `hidden_tests` — a list of {"args": [...], "expected": ...} where args is the \
+  positional argument list and expected is the return value. Both MUST be plain JSON \
+  values (use arrays, not tuples). Include the discriminating edge cases here.
+- Make hidden tests deterministic and unambiguous.
+
+Return ONLY a JSON object (no prose, no fence):
+{
+  "summary": "one sentence on what this audit screens for",
+  "competencies": ["comp_a", "comp_b"],
+  "tasks": [
+    {
+      "competency": "comp_a",
+      "entrypoint": "function_name",
+      "prompt": "the spec shown to the candidate",
+      "hidden_tests": [
+        {"args": [2, 3], "expected": 5},
+        {"args": [[]], "expected": []}
+      ]
+    }
+  ]
+}
+"""
+
+
 class Strategist:
     def __init__(self, provider: Provider) -> None:
         self.provider = provider
+
+    def design_coding_audit(
+        self,
+        requirement: str,
+        *,
+        competencies: list[str] | None = None,
+        harden_feedback: str | None = None,
+        version: int = 1,
+    ):
+        """Author an EXECUTABLE audit (coding tasks + hidden tests) from a requirement.
+
+        Returns a ``CodingAudit``. Supports the same ``harden_feedback`` as the text
+        path, so the adaptive discrimination loop drives auto-generated coding audits.
+        """
+        from .execution import build_coding_audit
+
+        constraint = ""
+        if competencies:
+            names = ", ".join(f'"{c}"' for c in competencies)
+            constraint = f"\n\nUse EXACTLY these competency names: [{names}]"
+        harden = ""
+        if harden_feedback:
+            harden = (
+                "\n\nThe previous audit FAILED TO DISCRIMINATE the candidates. Make the "
+                "hidden tests substantially harder — add edge cases a weaker solution "
+                f"will miss but a stronger one will pass. Details:\n{harden_feedback}"
+            )
+        user_prompt = (
+            f"Design an executable audit for this requirement.\n\nREQUIREMENT:\n"
+            f"{requirement.strip()}{constraint}{harden}\n\nReturn only the JSON object."
+        )
+        raw = self.provider.complete(user_prompt, system=CODING_SYSTEM_PROMPT)
+        return build_coding_audit(requirement, _extract_json(raw), version=version)
 
     def design_audit(
         self,

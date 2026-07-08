@@ -106,7 +106,7 @@ def main() -> int:
     print(result.summary())
 
     # Final hiring decision on the chosen (discriminating) exam.
-    chosen_tasks = generate(result.chosen_round, None)
+    chosen_tasks = result.exam   # the exam the loop selected (do not regenerate)
     by_cand = run_coding_audit(candidates, chosen_tasks)
     attempts_by_task = _transpose(by_cand)
 
